@@ -8,6 +8,9 @@
 import SwiftUI
 
 class DateGridViewModel: ObservableObject {
+    
+    @Published var selectedIndex: Int = 0
+
     //FIXME: change var names "mode"
     init(interval: DateInterval, mode: CalendarMode) {
         self.interval = interval

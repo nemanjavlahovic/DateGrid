@@ -26,18 +26,29 @@ public struct DateGrid<DateView>: View where DateView: View {
     }
     
     //TODO: make Date generator class
-    private let viewModel: DateGridViewModel
+    @ObservedObject private var viewModel: DateGridViewModel
+    @Binding var selectedMonth: Date // This remains to keep your API but might be less used directly.
     private let content: (DateGridDate) -> DateView
-    @Binding var selectedMonth: Date
-    
+
     public var body: some View {
         
-        TabView(selection: $selectedMonth) {
-            
+        TabView(selection: $viewModel.selectedIndex) {
             MonthsOrWeeks(viewModel: viewModel, content: content)
         }
         .frame(height: viewModel.mode.estimateHeight, alignment: .center)
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        .onChange(of: viewModel.selectedIndex) { newIndex in
+            // When selectedIndex changes, update selectedMonth accordingly.
+            if let newDate = viewModel.date(forIndex: newIndex) {
+                selectedMonth = newDate
+            }
+        }
+        .onAppear {
+            // When the view appears, ensure selectedIndex matches the initial selectedMonth.
+            if let initialIndex = viewModel.index(forMonth: selectedMonth) {
+                viewModel.selectedIndex = initialIndex
+            }
+        }
     }
     
     //MARK: constant and supportive methods
@@ -49,17 +60,19 @@ struct CalendarView_Previews: PreviewProvider {
     
     static var previews: some View {
         VStack {
-            Text(selectedMonthDate.description)
+            Text(DateFormatter.monthAndYear.string(from: selectedMonthDate))
+                .font(.title)
+                .fontWeight(.bold)
             WeekDaySymbols()
             
             DateGrid(
                 interval:
                         .init(
-                            start: Date.getDate(from: "2020 01 11")!,
-                            end: Date.getDate(from: "2020 12 11")!
+                            start: Date.getDate(from: "2024 01 01")!,
+                            end: Date.getDate(from: "2024 12 31")!
                         ),
                 selectedMonth: $selectedMonthDate,
-                mode: .month(estimateHeight: 400)
+                mode: .week(estimateHeight: 400)
             ) { dateGridDate in
                 
                 NormalDayCell(date: dateGridDate.date)
@@ -74,7 +87,7 @@ struct MonthsOrWeeks<DateView>: View where DateView: View {
     let content: (DateGridDate) -> DateView
     
     var body: some View {
-        ForEach(viewModel.monthsOrWeeks, id: \.self) { monthOrWeek in
+        ForEach(Array(viewModel.monthsOrWeeks.enumerated()), id: \.element) { index, monthOrWeek  in
             
             VStack {
                 
@@ -93,7 +106,7 @@ struct MonthsOrWeeks<DateView>: View where DateView: View {
                         }
                     }
                 }
-                .tag(monthOrWeek)
+                .tag(index) // Use index for stable identifier
                 //Tab view frame alignment to .Top didn't work dtz y
                 Spacer()
             }
@@ -102,4 +115,17 @@ struct MonthsOrWeeks<DateView>: View where DateView: View {
     
     //MARK: constant and supportive methods
     private let numberOfDaysInAWeek = 7
+}
+
+extension DateGridViewModel {
+    func index(forMonth date: Date) -> Int? {
+        // Find the index of the month that contains the given date.
+        return monthsOrWeeks.firstIndex { calendar.isDate($0, equalTo: date, toGranularity: .month) }
+    }
+    
+    func date(forIndex index: Int) -> Date? {
+        // Return the Date at the given index, if it exists.
+        guard monthsOrWeeks.indices.contains(index) else { return nil }
+        return monthsOrWeeks[index]
+    }
 }
