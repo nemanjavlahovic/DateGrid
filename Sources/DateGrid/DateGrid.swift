@@ -28,28 +28,19 @@ public struct DateGrid<DateView>: View where DateView: View {
       }
     
     //TODO: make Date generator class
-    @ObservedObject private var viewModel: DateGridViewModel
-    @Binding var selectedMonth: Date // This remains to keep your API but might be less used directly.
+    @StateObject private var viewModel: DateGridViewModel
     private let content: (DateGridDate) -> DateView
+    @Binding var selectedMonth: Date
 
     public var body: some View {
-        
-        TabView(selection: $viewModel.selectedIndex) {
+        TabView(selection: $selectedMonth) {
             MonthsOrWeeks(viewModel: viewModel, content: content)
         }
         .frame(height: viewModel.mode.estimateHeight, alignment: .center)
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-        .onChange(of: viewModel.selectedIndex) { newIndex in
-            // When selectedIndex changes, update selectedMonth accordingly.
-            if let newDate = viewModel.date(forIndex: newIndex) {
-                selectedMonth = newDate
-            }
-        }
         .onAppear {
-            // When the view appears, ensure selectedIndex matches the initial selectedMonth.
-            if let initialIndex = viewModel.index(forMonth: selectedMonth) {
-                viewModel.selectedIndex = initialIndex
-            }
+            // Now that envCalendar is accessible, update the viewModel's calendar
+            viewModel.calendar = self.envCalendar
         }
     }
 
