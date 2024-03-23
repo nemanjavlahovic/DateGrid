@@ -8,38 +8,42 @@
 import SwiftUI
 
 public struct DateGrid<DateView>: View where DateView: View {
-    
+    @Environment(\.calendar) var envCalendar
+
     /// DateStack view
     /// - Parameters:
     ///   - interval:
     ///   - selectedMonth: date relevant to showing month, then you can extract the components
     ///   - content:
     public init(
-        interval: DateInterval,
-        selectedMonth: Binding<Date>,
-        mode: CalendarMode,
-        @ViewBuilder content: @escaping (DateGridDate) -> DateView
-    ) {
-        self.viewModel = .init(interval: interval, mode: mode)
-        self._selectedMonth = selectedMonth
-        self.content = content
-    }
+          interval: DateInterval,
+          selectedMonth: Binding<Date>,
+          mode: CalendarMode,
+          @ViewBuilder content: @escaping (DateGridDate) -> DateView
+      ) {
+          // Initialize viewModel here without calendar, since we can't access envCalendar
+          self._viewModel = StateObject(wrappedValue: DateGridViewModel(interval: interval, mode: mode))
+          self._selectedMonth = selectedMonth
+          self.content = content
+      }
     
     //TODO: make Date generator class
-    private let viewModel: DateGridViewModel
+    @StateObject private var viewModel: DateGridViewModel
     private let content: (DateGridDate) -> DateView
     @Binding var selectedMonth: Date
-    
+
     public var body: some View {
-        
         TabView(selection: $selectedMonth) {
-            
             MonthsOrWeeks(viewModel: viewModel, content: content)
         }
         .frame(height: viewModel.mode.estimateHeight, alignment: .center)
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        .onAppear {
+            // Now that envCalendar is accessible, update the viewModel's calendar
+            viewModel.calendar = self.envCalendar
+        }
     }
-    
+
     //MARK: constant and supportive methods
 }
 
